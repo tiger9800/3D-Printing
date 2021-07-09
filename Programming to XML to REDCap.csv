@@ -1,0 +1,53 @@
+﻿Section (Programming),Programming,Programming Units,XML,XML Units,REDCap (field_name),REDCap Units,REDCap (field_type)
+Material Name,Name,,Name,,,,
+Material Name,Description,,Description,,,,
+Parameters,Temperature,C⁰,Temp,C⁰,printing_temp,C⁰,text
+Parameters,Needle Descirption,,NeedleDescription,,needle_size,,dropdown
+Parameters,Needle Offset,mm,NeedleOffset,mm,needle_offset,microm,text
+Parameters,Pressure,bar,DispPressure,bar,pressure,bar,text
+Parameters,Speed,mm/s,DispSpeed,mm/s,speed,mm/s,text
+Parameters,Pre-Flow,s,PreFlow,ms,pre_flow,s,text
+Parameters,Post-Flow,s,PostFlowPos,ms,post_flow,s,text
+Parameters,Post-Flow,s,PostFlowNeg,ms,-post_flow,s,
+Parameters,Wait Time Between Layers,s,WaitTime,ms,cool_time,s,text
+Parameters,Minimum Length,mm,MinLength,mm,,,
+Parameters,Density,g/cm^3,Density,g/cm^3,,,
+Paramters,Material Life Time,min,MatTimeout,min,,,
+Build Platform,Platform Temperature,C⁰,TableTemp,C⁰,,,
+Build Platform,Wait On Platform Temperature,,TableTempCheck,C⁰,,,
+Cleaning,Purge,,CalDoPurge,,,,
+Cleaning,Purge Time,s,CalPurgeTime,s,,,
+Cleaning,Cleaning Process: Thread Strip,,CalDoThreadStrip,,,,
+Cleaning,Cleaning Process: Metal Brush,,CalDoMetalBrush,,,,
+Cleaning,Cleaning Process: Plastic Brush,,CalDoPlasticBrush,,,,
+Cleaning,Automatic Cleaning Interval,,CleaningInterval,,,,
+Dot Printing,Pressure,,DotDispPressure,bar,,,
+Dot Printing,Dispense Time,bar,DotDispTime,ms,,,
+Dot Printing,Needle Z Offset,mm,DotDispDistance,mm,,,
+Dot Printing,Needle Z Speed,mm/s,DotDispSpeed,mm/s,,,
+Calibration,Calibrate after Tool Change,,CalibAfterChange,,,,
+Calibration,Calibration Station,,CalStation,,,,
+Calibration,Pressure,bar,CalDispPressure,bar,,,
+Calibration,Dispense Time,s,CalDispTime,ms,,,
+Calibration,Needle Z Offset,mm,CalDispDistance,mm,,,
+,,,Type,,,,
+,,,,,needle_type,,dropdown
+,,,,,syringe_size,,dropdown
+,,,,,needle_length,in,text
+,,,,,accel,mm/s^2,text
+,,,,,start_delay,s,text
+,,,,,num_layers,,dropdown
+,,,,,imgs,,file
+,,,,,print_eval (),,radio
+,,,,,fiber_diameter,microm,text
+,,,,,mat_accur,,text
+,,,,,mach_prec,,text
+,,,,,pr_value,,text
+,,,,,uniformity_score,,text
+,,,,,metric_notes,,notes
+,,,DispPressure2,bar,,,
+,,,PreFlow2,ms,,,
+,,,PostFlow2,ms,,,
+,,,CalDispPressure2,bar,,,
+,,,DotDispPressure2,bar,,,
+,,,HeatingCurves,,,,
