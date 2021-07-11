@@ -1,5 +1,8 @@
 import pandas as pd #for working with the CSV mapping
 import numpy as np
+
+# it is not ideal to have this here, maybe better insinde XML_to_REDCap ?
+# this csv file can also be a parameter of the main
 name_mapping = pd.read_csv("Programming to XML to REDCap.csv")
 
 
@@ -30,6 +33,7 @@ def XML_to_REDCap(params):
             params_new[new_key] = params[XML_param]
     return params_new
 
+#this function could also use some refactoring - we can discuss later
 def params_clean_convert(params_new):
     """
     Converts the parameters extracted from the .bpm export file to the appropriate units.
@@ -51,7 +55,13 @@ def params_clean_convert(params_new):
              params_converted[param] = params_converted[param]*conversion_dict[(xml_units, r_units)]
             #We need to convert and for that, we need a dictonary
     #Get just one post flow
+    #hmm this is also unclear to me, but ok
     params_converted['post_flow'] += -params_converted['-post_flow']
     del params_converted['-post_flow']
     return params_converted
 
+def get_final_params(lines):
+    params = parse_export(lines)
+    redcap_params = XML_to_REDCap(params)
+    params_converted = params_clean_convert(redcap_params)
+    return params_converted

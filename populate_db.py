@@ -1,6 +1,14 @@
 import requests
 import json
 
+## This file could also use some refactoring
+## I would suggest rename it into API calls (and make a class)
+## make all the functions here associated only with API calls
+## all other stuff can go to utils
+## URL and token can be global variables or class fields as they are constant
+## you can name the functions: post_trial and post_record (to reflect the http request)
+## you can make functions post_trial and post_record smaller by extracting some logic to utils 
+
 def get_metadata():
     """
     Returns the dictonary with metadata
@@ -20,6 +28,8 @@ def convert_to_numeric(record_dict, metadata):
             record_dict[name] = num_choice
         elif(name in name_choice_type and name_choice_type[name][1] =="yesno" and record_dict[name] != ""):#special case of a multiple choice
             record_dict[name] = (lambda choice_name: 1 if choice_name == "Yes" else 0)(record_dict[name])
+
+
 def check_bran_logic(record_dict, metadata):
     """
     Eliminate the fields that are not supposed to be included in the record because their branching logic
