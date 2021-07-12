@@ -30,12 +30,13 @@ if __name__ == "__main__" :
 
     #nice way to parse arguments
     parser = argparse.ArgumentParser(description = 'This is the 3DP app, hellp')
+    #loc is an optional argument
     parser.add_argument('--loc',
                          type=dir_path, default=".", 
                          help='location that will be tracked for new files - default current forlder')
     args = parser.parse_args()
 
-    main(args.loc)
+    main(args.loc)#name of the attributes
 
 
     #this used to be here - moved it to app.run

@@ -1,5 +1,6 @@
 import requests
 import json
+import utils
 
 ## This file could also use some refactoring
 ## I would suggest rename it into API calls (and make a class)
@@ -18,39 +19,7 @@ def get_metadata():
     response = requests.post(URL, data=payload)
     return response.json()
 
-def convert_to_numeric(record_dict, metadata):
-    name_choice_type = {field['field_name']:(field['select_choices_or_calculations'], field['field_type']) for field in metadata}#we need field_type for yes/no
-    for name in record_dict:
-        if(name in name_choice_type and name_choice_type[name][0] != "" and record_dict[name] != ""):#we assume the values are not converted yet
-            #pick a qualitative option and convert into a number, if someone have not inputted the number already
-            #TODO: Probably need to make sure, we only have "label" options and not number options. Then, we wil defintely have to convert.
-            num_choice = name_choice_type[name][0][name_choice_type[name][0].index(record_dict[name])-3]#here we operate under the assumption that the choices are single digits
-            record_dict[name] = num_choice
-        elif(name in name_choice_type and name_choice_type[name][1] =="yesno" and record_dict[name] != ""):#special case of a multiple choice
-            record_dict[name] = (lambda choice_name: 1 if choice_name == "Yes" else 0)(record_dict[name])
 
-
-def check_bran_logic(record_dict, metadata):
-    """
-    Eliminate the fields that are not supposed to be included in the record because their branching logic
-    is not satisfied. 
-    """
-    to_delete = []
-    field_branch_logic = {field['field_name']:field['branching_logic'] for field in metadata}
-    for field in record_dict:
-        if not (field in field_branch_logic):
-            continue
-        logic = field_branch_logic[field]
-        if(logic != ''):#then there is some logic that should be satisfied for this field
-            field_w_logic = logic[logic.index('[')+1:logic.index(']')]#whatever is in square brackets
-            values = [logic[index+ 3] for index, char in enumerate(logic) if char == '=']
-            #Now, we need to check if field_w_logic have one of the specified values
-            if (record_dict[field_w_logic] not in values):#if the logic is not satisfied by the required field, we delete the field
-                to_delete.append(field)
-    
-    #Delete the selected keys
-    for key in to_delete:
-        del record_dict[key]
 
 def add_record(user_input, printing_params):
     """
@@ -75,8 +44,8 @@ def add_record(user_input, printing_params):
     #Now we have complete structures JSON literals with the correct key, but wihtout values
     for key in user_input:
         record_print_mat[key] = user_input[key]#record_id is included here
-    check_bran_logic(record_print_mat, metadata)
-    convert_to_numeric(record_print_mat, metadata)
+    utils.check_bran_logic(record_print_mat)
+    utils.convert_to_numeric(record_print_mat)
     #Now we have completed the first two forms (should we updat _complete, or does user put it?)
     
     #Let's complete the third form(pritning parameters) form for the first trial
@@ -92,8 +61,8 @@ def add_record(user_input, printing_params):
     #print("Here are printing params:", printing_params)
     for key in printing_params:#we can fill the rest using what we parsed from the export file
         record_print_params[key] = printing_params[key]
-    check_bran_logic(record_print_params, metadata)
-    convert_to_numeric(record_print_params, metadata)
+    utils.check_bran_logic(record_print_params)
+    utils.convert_to_numeric(record_print_params)
     #Now, we just need to post the request
     print("here's printing printing_params dict passed as a parameter", printing_params)
     print("Here are record_print_params dict", record_print_params)
@@ -137,8 +106,8 @@ def add_trial(record_dict, printing_params):
     for key in printing_params:
         record_print_params[key] = printing_params[key]
     metadata = get_metadata()
-    check_bran_logic(record_print_params, metadata)
-    convert_to_numeric(record_print_params, metadata)
+    utils.check_bran_logic(record_print_params)
+    utils.convert_to_numeric(record_print_params)
     #POST REQUEST
     json_record = json.dumps([record_print_params])
     payload['data'] = json_record

@@ -1,11 +1,13 @@
 ##let's put all the main stuff here in the class
 import GUI_code
-import populate_db
+import API_calls
 from prepare_params import *
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import time
 from utils import *
+import glob
+import os.path
+from pathlib import Path#monitor directory presence
 
 class PrintApp():
 
@@ -27,43 +29,40 @@ class PrintApp():
     #this function could also be here
     def start_watching(self):
         observer = Observer()
-        event_handler = MyHandler(observer)
+        event_handler = MyHandler(observer, self.loc)#let's also pass the path, so we can monitor the directory 
+        #(alternatively, modify the string returned by event.src_path)
+        
         #it is not ideal to have the path hardcoded here
         #this could be something you would like to let users change without changint the code
         #we can make it a parameter to the main function or a global constant imported from a config file
         observer.schedule(event_handler, path=self.loc, recursive=False)
         observer.start()
-        observer.join()#we can join here bc the thread terminates.
+        observer.join()#we can join here bc the thread terminates. (do we need the join here?)
 
 
 
 #Trigger an event on file creation
 class MyHandler(FileSystemEventHandler):
 
-    def __init__(self, observer):
-        # self.lines = lines  - try to go without this
+    def __init__(self, observer, path):
         self.observer = observer
+        self.path = path
         
         
     def on_created(self, event):
-        # self.stop() - keep observing
-
-        #give permissions
-        #os.chmod(event.src_path, stat.S_IRUSR|stat.S_IRGRP|stat.S_IROTH)
-        init_size = -1
-        print("Here's the source path returned by watchdog", event.src_path)
-        
-        #this while loop is also not ideal, but we can keep it for now
+        #We do not want to unzip after arbitrarily predetrmined time.
+        #Check if the event.src_path direcotry still exists and while exists do not do anything
+        print("Here's src path", event.src_path)
+        dir_path = Path(event.src_path)
         while True:
-            current_size = os.path.getsize(event.src_path)
-            
-            if current_size == init_size:
+            if not dir_path.exists():#the directory does not exist
                 break
-            else:
-                init_size = os.path.getsize(event.src_path)
-                time.sleep(2)
-        print("file copy has now finished")
-        lines = unzip_read(event.src_path)
+        folder_path = self.path
+        file_type = '\*zip'#look for the last .zip file
+        files = glob.glob(folder_path + file_type)
+        max_file = max(files, key=os.path.getctime)
+        print ("Here is the last file", max_file) 
+        lines = unzip_read(max_file)
         params_converted = get_final_params(lines)
 
         #Now, we need to start the GUI code
@@ -75,9 +74,9 @@ class MyHandler(FileSystemEventHandler):
 
     def populate_database(self, func_name, record_trial_info, params_converted):
         if func_name == "add_record":
-            populate_db.add_record(record_trial_info, params_converted)
+            API_calls.add_record(record_trial_info, params_converted)
         if func_name == "add_trial":
-            populate_db.add_trial(record_trial_info, params_converted)
+            API_calls.add_trial(record_trial_info, params_converted)
 
     def stop(self):
         self.observer.stop()
