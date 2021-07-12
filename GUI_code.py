@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 import requests
 
+#you could move this function to API calls
 def get_experiment_names():
     """
     Exports all the records from the API and to populate the list of the experiment names, used for
@@ -13,6 +14,8 @@ def get_experiment_names():
     for json_lit in response.json():
         record_names.add(json_lit['record_id'])
     return list(record_names)#values["list"] does not have values if we give set as the values
+
+#this one too to API calls
 def get_elements(record_id):
     """
     Get all JSON literals(dicts) assocciated with the record_id.
@@ -64,6 +67,7 @@ def start_GUI():
         event, values = window.read()
         # End program if user closes window or
         # presses the OK button
+        # you can use switch-case here instead of if statements
         if event == sg.WIN_CLOSED:
             #LIndicate abort
             return None, None
