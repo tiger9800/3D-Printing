@@ -1,8 +1,9 @@
 # utils.py is a good place to keep a bunch of helper functions
-
+import api_calls
 import os
 from zipfile import ZipFile
-import API_calls
+import re
+
 
 def dir_path(string):
     '''
@@ -51,32 +52,55 @@ def check_bran_logic(record_dict):
     Eliminate the fields that are not supposed to be included in the record because their branching logic
     is not satisfied. 
     """
-    metadata = API_calls.get_metadata()
+    api = api_calls.API_calls()
+    branch_dict = api.get_branching_dep_to_indep()
     to_delete = []
-    field_branch_logic = {field['field_name']:field['branching_logic'] for field in metadata}
-    for field in record_dict:
-        if not (field in field_branch_logic):
-            continue
-        logic = field_branch_logic[field]
-        if(logic != ''):#then there is some logic that should be satisfied for this field
-            field_w_logic = logic[logic.index('[')+1:logic.index(']')]#whatever is in square brackets
-            values = [logic[index+ 3] for index, char in enumerate(logic) if char == '=']
-            #Now, we need to check if field_w_logic have one of the specified values
-            if (record_dict[field_w_logic] not in values):#if the logic is not satisfied by the required field, we delete the field
-                to_delete.append(field)
+    
+    # print("Here dependnent to independent dict:", branch_dict)
+    for dependent_field in record_dict:
+        to_delete_flag = False
+        if(dependent_field in branch_dict):
+            for independent_field in branch_dict[dependent_field]:
+                #if the value that the indep fields takes satisfies the branching logic for the dependent, then do not delete
+                # print("independent_field", independent_field)
+                # print("dependent_field", dependent_field)
+                # print("record_dict[independent_field]:", record_dict[independent_field]) 
+                # print("(branch_dict[dependent_field][independent_field]", branch_dict[dependent_field][independent_field])
+                if(record_dict[independent_field] in branch_dict[dependent_field][independent_field]):
+                    #do not delete
+                    to_delete_flag = False
+                    break#so to_delete = False is set last
+                else:
+                    to_delete_flag = True
+        if(to_delete_flag):
+            to_delete.append(dependent_field)
     
     #Delete the selected keys
     for key in to_delete:
+        print("Branching not satisfied:", key)
         del record_dict[key]
 
 def convert_to_numeric(record_dict):
-    metadata = API_calls.get_metadata()
+    api = api_calls.API_calls()
+    metadata = api.get_metadata()
     name_choice_type = {field['field_name']:(field['select_choices_or_calculations'], field['field_type']) for field in metadata}#we need field_type for yes/no
+    regex_full = "\d+, [A-z0-9\s/%\-]+"#might need to modify the regex
+    regex_num_choice = "\d+,"
+    regex_label_choice = ", [A-z0-9\s/%\-]+"
     for name in record_dict:
         if(name in name_choice_type and name_choice_type[name][0] != "" and record_dict[name] != ""):#we assume the values are not converted yet
-            #pick a qualitative option and convert into a number, if someone have not inputted the number already
-            #TODO: Probably need to make sure, we only have "label" options and not number options. Then, we wil defintely have to convert.
-            num_choice = name_choice_type[name][0][name_choice_type[name][0].index(record_dict[name])-3]#here we operate under the assumption that the choices are single digits
-            record_dict[name] = num_choice
+            num_choice_lst = re.findall(regex_full, name_choice_type[name][0])#select_choices_or_calculations
+            num_choice_lst = [choice.strip() for choice in num_choice_lst]#get rid of white spaces
+            num_choices = [re.match(regex_num_choice, choice)[0].strip(" ,") for choice in num_choice_lst]
+            label_choices = [re.search(regex_label_choice, choice)[0].strip(", ") for choice in num_choice_lst]
+            for label_idx in range(len(label_choices)):
+                if(record_dict[name] == label_choices[label_idx]):
+                    record_dict[name] = num_choices[label_idx]
+                    break
+            # #pick a qualitative option and convert into a number, if someone have not inputted the number already
+            # #TODO: Probably need to make sure, we only have "label" options and not number options. Then, we wil defintely have to convert.
+            # print("Name:", record_dict[name])
+            # #print("name_choice_type[name][0][name_choice_type[name][0]:", name_choice_type[name][0][name_choice_type[name][0])
+            # num_choice = name_choice_type[name][0][name_choice_type[name][0].index(record_dict[name])-3]#here we operate under the assumption that the choices are single digits
         elif(name in name_choice_type and name_choice_type[name][1] =="yesno" and record_dict[name] != ""):#special case of a multiple choice
-            record_dict[name] = (lambda choice_name: 1 if choice_name == "Yes" else 0)(record_dict[name])
+            record_dict[name] = (lambda choice_name: '1' if choice_name == "Yes" else '0')(record_dict[name])
