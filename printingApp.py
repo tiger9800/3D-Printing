@@ -12,9 +12,15 @@ from pathlib import Path#monitor directory presence
 
 class PrintApp():
 
+<<<<<<< HEAD
     def __init__(self, loc, name_token):
         self.loc = loc
         self.name_token = name_token
+=======
+    def __init__(self, loc, token):
+        self.loc = loc
+        self.token = token
+>>>>>>> 94041a393c62ccb73a9603f0c608efb0c15841b4
 
     
     def run(self):
