@@ -9,11 +9,7 @@ from utils import *
 ## the code that you want to be executed first can be in the main function
 ## then you can rename this file to something nicer like "3D_printing_database" or something
 
-<<<<<<< HEAD
 def main(location, name_token):
-=======
-def main(location, token):
->>>>>>> 94041a393c62ccb73a9603f0c608efb0c15841b4
     # in general I am a fan of object oriented design
     # it makes the code more modular
     # so let's put all the major things in one class
