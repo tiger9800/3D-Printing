@@ -1,9 +1,13 @@
+import re
+from subprocess import check_call
 import PySimpleGUI as sg
+from PySimpleGUI.PySimpleGUI import Text
 import api_calls
 import utils
 import copy
 
 class GUI():
+    api = api_calls.API_calls()
     def clear_disable_all(self, window, branch_log_dict, to_disable, caller_key = "new_exp_radio"):
         """
         Clears the fields and disables all the fields that depend on branching logic.
@@ -14,7 +18,7 @@ class GUI():
         #let's first clear all the fields
         for row in to_disable:
             for elem in row:
-                if(elem.Key != None and elem.metadata != 'not_disable'):#do not block the radio button):
+                if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
                     window[elem.Key].update(value = "")
 
         #let's now disable the branching logic
@@ -23,7 +27,7 @@ class GUI():
             for value in branch_log_dict[element]:
                 keys_to_disable.update(branch_log_dict[element][value])
         for element in keys_to_disable:
-            if(element!="paxton"):
+            if(not isinstance(window[element], sg.Text)):
                 window[element].update(disabled = True)
                 window[element].metadata = False
 
@@ -38,14 +42,15 @@ class GUI():
         # print("Here is branch_log_dict:", branch_log_dict)
         # print("Here is values:", values)
         if(values[key_event] in branch_log_dict[key_event]):#if there is branching for the chosen option
-            for element in branch_log_dict[key_event][values[key_event]]:
+            for element_key in branch_log_dict[key_event][values[key_event]]:
                 #values the element can take
-                # print("Enable:", element)
-                if(element!= "paxton"):#could do differently
-                    window[element].update(disabled = False)
-                    window[element].metadata = True
-                window[element].update(visible = True)
-    def disable_not_selected(self, window, values, branch_log_dict, key_event=None):
+                if not isinstance(window[element_key], sg.Text):
+                    window[element_key].update(disabled = False)
+                    window[element_key].metadata = True
+                    window[element_key+"_label"].update(text_color = "#FFFFFF")#every non-text field has a label
+                window[element_key].update(visible = True)
+                
+    def disable_not_selected(self, window, values, branch_log_dict, key_event):
         """
         Disable the elements that cannot be used because of a conditon in 
         branching logic not being satisfied.
@@ -55,75 +60,90 @@ class GUI():
         #could used deepcopy, but we do not actually need it
         utils.convert_to_numeric(values)
         key_set = set(branch_log_dict[key_event].keys())
-        # print("Here is branch_log_dict:", branch_log_dict)
-        #Here values dict is already modified, so we get a different result(before deepcopy)
-        # print("Here is values:", values)
-        # print("Here's key_event:", key_event)
-        # print("Here is key_set", key_set)
-        # print("Here's the key elements of which we do not want to disable:", values[key_event])
-        # print("Here's the set of values to disable(difference):", key_set.difference(set([values[key_event]])))
         for key in key_set.difference(set([values[key_event]])):
-            for element in branch_log_dict[key_event][key]:
-                # print("Disable:", element)
-                if(element!= "paxton"):#could do differently
-                    window[element].update(disabled = True)
-                    window[element].update(value = "")
-                    window[element].metadata = False
-                window[element].update(visible = False)
+            for element_key in branch_log_dict[key_event][key]:
+                if not isinstance(window[element_key], sg.Text):
+                    window[element_key].update(disabled = True)
+                    window[element_key].update(value = "")
+                    window[element_key].metadata = False
+                    window[element_key+"_label"].update(text_color = "#000000")#every non-text field has a label
+                window[element_key].update(visible = False)
+    def make_fields(self):
+        """
+        Creates a list of lists(where each inner list is a row). Each row consists of fields
+        """
+        #Let's first get fields in material_information printer_information
+        metadata = GUI.api.get_metadata()
+        field_correct_form = filter(lambda field: field['form_name']=='material_information' or field['form_name'] == 'printer_information', metadata)
+        rows_w_fields = []
+        for field in field_correct_form:
+            #make label
+            row = []
+            key = field['field_name']
+            type = field['field_type']
+            row.append(sg.Text(text = field['field_label'], key=key+"_label"))#keys for labels are key_label (ex. record_id_label)
+            if(type == 'radio' or type == "dropdown"):
+                options = utils.get_options(field)
+                row.append(sg.Combo(options, key=key, disabled= True, metadata=True, enable_events=True))
+            elif(type == "yesno"):
+                options = ["Yes", "No"]
+                row.append(sg.Combo(options, key=key, disabled= True, metadata=True, enable_events=True))
+            elif(type == "text"):
+                row.append(sg.Input(key=key, disabled=True, metadata=True))
+            else:#descirptive
+                row[0] = sg.Text(text = field['field_label'], key=key, metadata=True)#we only need text in this case
+            rows_w_fields.append(row)
+        return rows_w_fields  
+
+    def validate_fields(self, window, values):
+        """
+        Validate fields according to the validation specified in REDCap.
+
+        Returns True/False as the first element of a tuple to indicate if the fields passed validation
+        """
+        metadata = GUI.api.get_metadata()
+        enbaled_fields = filter(lambda elem: (elem['form_name']=='material_information' or elem['form_name']=='printer_information') 
+        and not (isinstance(window[elem['field_name']], sg.Text) or window[elem['field_name']].Disabled), metadata)#only validate enbaled fields
+        for field in enbaled_fields:
+            validation = field['text_validation_type_or_show_slider_number']
+            value = values[field['field_name']]
+            if (validation == "number" and value.isdigit()):
+                #check if correct ranges
+                if field['text_validation_max'] != "":
+                    if value > field['text_validation_max']:
+                        return False, field['field_label']
+                if field['text_validation_min'] != "":
+                    if value < field['text_validation_min']:
+                        return False, field['field_label']
+                    
+            elif (validation == "number" and not value.isdigit()):
+                print("number but not digit")
+                return False, field['field_label']
+        return True, None
+    def get_print_result(self):
+        return "Good Print" if sg.popup_yes_no("Is it a good print?", title = "Print Quality") == "Yes" else "Bad Print"
+        
     def start_GUI(self):
         """
         Does everything related to do the UI. Returns the type of the action to do and the other required parameter. In other words, 
         add a new trial or add a new experiment.
         
         """
-
-        api = api_calls.API_calls()
-        experiment_names = api.get_experiment_names()
-        branch_log_dict = api.get_branching_indep_to_dep()
+        experiment_names = GUI.api.get_experiment_names()
+        branch_log_dict = GUI.api.get_branching_indep_to_dep()
         #Separate columns for a new trial and a new experiment
+
         col_new_trial = [[sg.Radio('New Trial', "RADIO1", default=True, enable_events = True, key="new_trial_radio", metadata='not_disable')],
         [sg.Text(text = "Please pick your experiment from the list below:")], 
         [sg.Listbox(values=experiment_names, size=(30, 6), key="list", select_mode = sg.LISTBOX_SELECT_MODE_SINGLE)]]
 
         #metadata ahs true if we need to input filed
-        col_new_experiment = [[sg.Radio('New experiment', "RADIO1", enable_events=True, key="new_exp_radio", metadata='not_disable')], 
-        [sg.Text(text = "RecordID:"), sg.Input(key='record_id', disabled=True, metadata=True)],
-        [sg.Text(text = "Name of User:"), sg.Input(key='name_user', disabled=True, metadata=True)],
-        [sg.Text(text = "Material Category:"), sg.Combo(['Gels', 'Thermoplastic'], key ="material_category", disabled= True, enable_events=True, metadata=True)],
-        [sg.Text(text = "Hydrogel Material Name:"), sg.Combo(['MA-GNP', 'GelMA', 'Alginate', 'Pluronic', 'dECM', 'Other'], key ="material_name", disabled = True, metadata=True)],
-        [sg.Text(text = "Hydrophobic Material Name:"), sg.Combo(['PPF', 'PCL'], key ="material_name_2", disabled = True)],
-        [sg.Text(text = "Solvent Type:"), sg.Combo(["PBS", "Milli-Q", "DMEM", "Organic Solvent", "No Solvent"], key ="solvent_type", disabled= True, metadata=True)],
-        [sg.Text(text = "Material's Molecular Weight:"), sg.Input(key='mat_mw', disabled=True, do_not_clear=False)],
-        [sg.Text(text = "Material's Molecular Weight (Unit):"), sg.Input(key='mat_mw_unit', disabled=True,  metadata=True)],
-        [sg.Text(text = "Material's Viscosity:"), sg.Input(key='viscosity', disabled=True,  metadata=True)],
-        [sg.Text(text = "Material's Viscosity (Units):"), sg.Input(key='viscosity_units', disabled=True,  metadata=True)],
-        [sg.Text(text = "Material's Yield Strength:"), sg.Input(key='yield_strength', disabled=True,  metadata=True)],
-        [sg.Text(text = "Material's Yield Strength (Units):"), sg.Input(key='yield_strength_unit', disabled=True,  metadata=True)],
-        [sg.Text(text = "Gelation/Melting/Phase Change Temperature (C)"), sg.Input(key='gel_temp', disabled=True,  metadata=True)],
-        [sg.Text(text = "The next two questions are asking for the shear thinning coefficients.\nFor more information about these parameters, please refer to attached paper.: shorturl.at/fkuNO", 
-        key = "paxton", metadata='not_disable')],
-        [sg.Text(text = "Shear Thinning Coefficient (K)"), sg.Input(key='stc_k', disabled=True,  metadata=True)],
-        [sg.Text(text = "Shear Thinning Coefficient (n)"), sg.Input(key='stc_n', disabled=True,  metadata=True)],
-        [sg.Text(text = "Solid/Polymer Concentration:"), sg.Input(key='polymer_concent', disabled=True,  metadata=True)],
-        [sg.Text(text = "Solid/Polymer Content (Units):"), sg.Combo(["w/v %", "w/w %", "v/v %"], key ="content_units", disabled= True, metadata=True)],
-        [sg.Text(text = "Additives:"), sg.Combo(["Yes", "No"], disabled= True, key = "additives", enable_events=True, metadata=True)],
-        [sg.Text(text = "Addtivive Content:"), sg.Input(key='add_content', disabled=True,  metadata=True)],
-        [sg.Text(text = "Addtivive Content (Units):"), sg.Combo(["w/v %", "w/w %", "v/v %"], key ="add_content_units", disabled= True, metadata=True)],
-        [sg.Text(text = "Size of Additive (Diameter):"), sg.Input(key='add_diameter', disabled=True,  metadata=True)],
-        [sg.Text(text = "Size of Additive (Diameter) (Units):"), sg.Input(key='add_diameter_unit', disabled=True,  metadata=True)],
-        [sg.Text(text = "Printer Name:"), sg.Combo(["BioAssembly Bot", "Bioplotter", "CellLink", "Other"], key ="printer", disabled= True, metadata=True)]]
-
+        col_new_experiment = [[sg.Radio('New experiment', "RADIO1", enable_events=True, key="new_exp_radio", metadata='not_disable')]]
+        col_new_experiment.extend(self.make_fields())#add fields to the form
         layout =  [[sg.Column(col_new_trial), sg.Column(col_new_experiment)], 
         [sg.Button(button_text= "OK", enable_events= True, key ="OK")]]
-
-        
-        
-        window = sg.Window('New Data', layout)
-
-        
-
-        # for elem in col_new_experiment:
-        #     print(elem[0].Key)#we can key to get all the stuff in the column
+   
+        window = sg.Window('New Data', layout, keep_on_top=True)#Creation of the window
         while True:
             event, values = window.read()
             # End program if user closes window or
@@ -137,7 +157,7 @@ class GUI():
                 window['list'].update(disabled = True)
                 for row in col_new_experiment:
                     for elem in row:
-                        if(elem.Key != None and elem.metadata != 'not_disable'):#do not block the radio button):
+                        if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
                             window[elem.Key].update(disabled = False)
                 # print("I am here (new_exp_radio)")
                 self.clear_disable_all(window, branch_log_dict, col_new_experiment)#we could just enable a few, instead
@@ -145,7 +165,7 @@ class GUI():
                 #disable everything in the form
                 for row in col_new_experiment:
                     for elem in row:
-                        if(elem.Key != None and elem.metadata != 'not_disable'):#do not block the radio button and do not update textboxes
+                        if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button and do not update textboxes
                             window[elem.Key].update(disabled = True)
                 #enable the listbox
             
@@ -161,7 +181,7 @@ class GUI():
                         if(field_missing):
                             break#do not check anymore
                         for elem in row:
-                            if(elem.Key != None and elem.metadata != 'not_disable'):#do not check labels and the radio button
+                            if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not check labels and the radio button
                                 if (elem.metadata and values[elem.Key]== ""): #value ahs to be filled and not empty
                                     field_missing = True
                                     sg.popup_ok('Required fields are missing!')#if at least one field is empty, throw a popup and stop checking
@@ -169,15 +189,20 @@ class GUI():
                                     #if at least one field does not have a value, then we generate a popup
                                 elif(values[elem.Key] != ""):#add to the dictonary of paramaters
                                     printing_params[elem.Key] = values[elem.Key]
-                        #all fields are filled
-                        #we can return
+                       
                     if not field_missing:
+                        #if everything is filled, then validate
+                        
                         # print("Here are printing_params in GUI_code.py:", printing_params)
                         #if user closes the popup, then the print is considered bad by default
-                        print_result = "Good Print" if sg.popup_yes_no("Is it a good print?", title = "Print Quality") == "Yes" else "Bad Print"
-                        window.close()
-                        #now, we also return print_result
-                        return "add_record", printing_params, print_result
+                        is_valid, field_name = self.validate_fields(window, values)
+                        if(is_valid):
+                            print_result = self.get_print_result()
+                            window.close()
+                            #now, we also return print_result
+                            return "add_record", printing_params, print_result
+                        else:
+                            sg.popup_ok("The field could not be validated: " + field_name)
                                                         
                 elif values['new_trial_radio']:#could use else
                     # print("here are values of list_box", values['list'])
@@ -185,16 +210,12 @@ class GUI():
                     if values['list'] == []:
                         sg.popup_ok('Required fields are missing!')
                         continue#go to while loop
-                    #we got here, so we now the record_id of the experiment we want to do the new trial for
-                    record_lst = api.get_elements(record_id=values['list'][0])
+                    #we got here, so we now know the record_id of the experiment we want to do the new trial for
+                    record_lst = GUI.api.get_elements(record_id=values['list'][0])
+                    print_result = self.get_print_result()
                     window.close()
-                    return "add_trial", record_lst
+                    return "add_trial", record_lst, print_result
             elif event in branch_log_dict:#if branching logic is dependent on this element
                 #we could only enable/disable stuff affected by the element
                 self.enable_selected(window, copy.deepcopy(values), branch_log_dict, event)
                 self.disable_not_selected(window, copy.deepcopy(values), branch_log_dict, event)
-            
-            
-            
-
-
