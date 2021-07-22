@@ -11,13 +11,17 @@ from pathlib import Path#monitor directory presence
 
 class PrintApp():
 
-    def __init__(self, loc):
+    def __init__(self, loc, token):
         self.loc = loc
+        self.token = token
 
     
     def run(self):
         
         print("Tracked directory: " + self.loc)
+        print("Here is your token: " + self.token)
+        #add token as class attribute to API_calls
+        api_calls.API_calls.token = self.token
         print("Starting tracking ...")
 
         # I have removed the global variable lines
@@ -67,7 +71,7 @@ class MyHandler(FileSystemEventHandler):
         params_converted = get_final_params(lines)
 
         #Now, we need to start the GUI code
-        func_name, record_trial_info, print_result = self.gui.start_GUI()
+        func_name, record_trial_info, print_result = MyHandler.gui.start_GUI()
 
         #update the print_result obtained from GUI
         params_converted['print_eval'] = print_result

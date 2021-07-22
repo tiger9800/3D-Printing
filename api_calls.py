@@ -11,9 +11,8 @@ import re
 ## you can name the functions: post_trial and post_record (to reflect the http request)
 ## you can make functions post_trial and post_record smaller by extracting some logic to utils 
 class API_calls():
-    token = "9063A3A857B5F42B3392C2C18320DE9E"
     URL = "https://redcap.crc.rice.edu/api/"
-
+    token = ""
     #you could move this function to API calls
     def get_experiment_names(self):
         """
@@ -94,19 +93,22 @@ class API_calls():
                         else:#no such value for this field yet
                             bran_dict[field_name][value] = set([field['field_name']])
         return bran_dict
+    def get_instruments(self):
+        payload = {"token" : API_calls.token, "format":"json", "type":"flat", "content":"instrument"}
+        instruments = requests.post(API_calls.URL, data=payload).json()
+        return instruments
+
     def get_metadata(self):
         """
         Returns the dictonary with metadata
         """
-        payload = {"token" : self.token, "content":"metadata", "format":"json", "type":"flat"} 
-        response = requests.post(self.URL, data=payload)
+        payload = {"token" : API_calls.token, "content":"metadata", "format":"json", "type":"flat"} 
+        response = requests.post(API_calls.URL, data=payload)
         return response.json()
-
-
 
     def add_record(self, user_input, printing_params):
         """
-        This function  is for cretaion of a new records only (i.e. not a new trial)
+        This function is for cretaion of a new records only (i.e. not a new trial).
         
         user_input - dictonary with the info user inputs through a form (i.e material info)
         printing_params - printing_parameters extracted from theinput file
@@ -114,19 +116,18 @@ class API_calls():
         #Let's get all the fields by running metadata
         metadata = self.get_metadata()
         #Create payload dict that will be us later
-        payload = {"token" : self.token, "format":"json", "type":"flat"}
+        payload = {"token" : API_calls.token, "format":"json", "type":"flat"}
         record_print_mat = {field['field_name']: '' for field in metadata}#here we have all the fields from metadata
         #Let's export instrument names
-        payload['content'] = 'instrument'
-        instruments = requests.post(self.URL, data=payload).json()
+        instruments = self.get_instruments()
         for instrument in instruments:
             record_print_mat[instrument['instrument_name']+'_complete'] = ''
         #Now we have complete structures JSON literals with the correct key, but wihtout values
         for key in user_input:
             record_print_mat[key] = user_input[key]#record_id is included here
+        record_print_mat['material_information_complete'] = '2'
+        record_print_mat['printer_information_complete'] = '2'
        
-        # print("here's printing user_input dict passed as a parameter (before check_bran_logic)", user_input)
-        # print("Here are record_print_mat dict (before check_bran_logic)", record_print_mat)
         utils.convert_to_numeric(record_print_mat)
         utils.check_bran_logic(record_print_mat)
         if('paxton' in record_print_mat):
@@ -134,36 +135,35 @@ class API_calls():
         #the field from the survey
 
         #Now we have completed the first two forms (should we updat _complete, or does user put it?)
-        # print("here's printing user_input dict passed as a parameter (after check_bran_logic)", user_input)
-        # print("Here are record_print_mat dict (after check_bran_logic)", record_print_mat)
         #Let's complete the third form(pritning parameters) form for the first trial
         record_print_params  = {field['field_name']: '' for field in metadata}#intialize the JSON literal
         #Let's add the instruments_complete'
         for instrument in instruments:
-            record_print_params[instrument['instrument_name']+'_complete'] = ''#again, (should we update _complete?)
+            record_print_params[instrument['instrument_name']+'_complete'] = ''
+        record_print_params['printing_parameters_complete'] = '2'
+
         record_print_params['record_id'] = record_print_mat['record_id']#the same record_id
         #We could use the API to get all the repeated instruments, but we have only one, so
         #we can just use it as the value
         record_print_params['redcap_repeat_instrument'] = 'printing_parameters'
         record_print_params['redcap_repeat_instance'] = 1 #we know it's the first trial
+        record_print_params['date_exp']= utils.get_date()
         #print("Here are printing params:", printing_params)
         for key in printing_params:#we can fill the rest using what we parsed from the export file
             record_print_params[key] = printing_params[key]
         utils.convert_to_numeric(record_print_params)
         utils.check_bran_logic(record_print_params)
         #Now, we just need to post the request
-        # print("here's printing printing_params dict passed as a parameter", printing_params)
-        # print("Here are record_print_params dict", record_print_params)
         payload['content'] = 'record'
         json_record = json.dumps([record_print_mat, record_print_params])
         payload['data'] = json_record
         
         #POST REQUEST FOR IMPORTING THE RECORD
-        msg = requests.post(self.URL, data=payload)
+        msg = requests.post(API_calls.URL, data=payload)
         if('error' in msg.json()):
+            print(msg.json())
             print(msg.json()['erorr'])
-        # print(msg.json())
-        # assert(msg.json()['count'] == 1)
+    
 
     def add_trial(self, record_dict, printing_params):
         """
@@ -174,7 +174,7 @@ class API_calls():
         record_id
         priniting_params - new printing params from the export file for the new trial
         """
-        payload = {"token" : self.token, "content":"record", "format":"json", "type":"flat"}
+        payload = {"token" : API_calls.token, "content":"record", "format":"json", "type":"flat"}
         #We need to locate the record with the required record id
         #first establish max_value of the trial, redcap_repeat_instance and create redcap_repeat_instance = max_value + 1
         #We know we have max_value > =1 (from the prev function)
@@ -191,16 +191,25 @@ class API_calls():
         #the rep instance
         record_print_params['redcap_repeat_instance'] = rep_instance
         #Finally, let's add the paramters of the new trial(parsed from export)
-        
+        record_print_params['date_exp']= utils.get_date()
         for key in printing_params:
             record_print_params[key] = printing_params[key]
+
+        #Indicate that forms are complete
+        instruments = self.get_instruments()
+
+        for instrument in instruments:
+            record_print_params[instrument['instrument_name']+'_complete'] = ''
+        
+        record_print_params['printing_parameters_complete'] = '2'
+        #make the form complete
         utils.check_bran_logic(record_print_params)
         utils.convert_to_numeric(record_print_params)
         #POST REQUEST
         json_record = json.dumps([record_print_params])
         payload['data'] = json_record
         #POST REQUEST FOR IMPORTING THE RECORD(adding a new trial in this case)
-        msg = requests.post(self.URL, data=payload)
+        msg = requests.post(API_calls.URL, data=payload)
         if('error' in msg.json()):
+            print(msg.json())
             print(msg.json()['erorr'])
-        # assert(msg.json()['count'] == 1)

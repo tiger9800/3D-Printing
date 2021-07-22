@@ -9,13 +9,13 @@ from utils import *
 ## the code that you want to be executed first can be in the main function
 ## then you can rename this file to something nicer like "3D_printing_database" or something
 
-def main(location):
+def main(location, token):
     # in general I am a fan of object oriented design
     # it makes the code more modular
     # so let's put all the major things in one class
 
     #we can make the location a parameter for users to specify
-    app = PrintApp(location)
+    app = PrintApp(location, token)
     app.run()
 
 
@@ -34,22 +34,9 @@ if __name__ == "__main__" :
     parser.add_argument('--loc',
                          type=dir_path, default=".", 
                          help='location that will be tracked for new files - default current forlder')
+    parser.add_argument('token', 
+                         help='token to intreact with the API.')
     args = parser.parse_args()
 
-    main(args.loc)#name of the attributes
+    main(args.loc, args.token)#name of the attributes
 
-
-    #this used to be here - moved it to app.run
-    '''
-    lines = []
-    read_on_create.start_watching(lines)
-    params = prepare_params.parse_export(lines)
-    redcap_params = prepare_params.XML_to_REDCap(params)
-    params_converted = prepare_params.params_clean_convert(redcap_params)
-    #Now, we need to start the GUI code
-    func_name, record_trial_info = GUI_code.start_GUI()
-    if func_name == "add_record":
-        populate_db.add_record(record_trial_info, params_converted)
-    if func_name == "add_trial":
-        populate_db.add_trial(record_trial_info, params_converted)
-    '''

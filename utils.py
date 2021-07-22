@@ -3,6 +3,7 @@ import api_calls
 import os
 from zipfile import ZipFile
 import re
+import datetime
 
 
 def dir_path(string):
@@ -77,7 +78,6 @@ def check_bran_logic(record_dict):
     
     #Delete the selected keys
     for key in to_delete:
-        print("Branching not satisfied:", key)
         del record_dict[key]
 
 def convert_to_numeric(record_dict):
@@ -97,10 +97,21 @@ def convert_to_numeric(record_dict):
                 if(record_dict[name] == label_choices[label_idx]):
                     record_dict[name] = num_choices[label_idx]
                     break
-            # #pick a qualitative option and convert into a number, if someone have not inputted the number already
-            # #TODO: Probably need to make sure, we only have "label" options and not number options. Then, we wil defintely have to convert.
-            # print("Name:", record_dict[name])
-            # #print("name_choice_type[name][0][name_choice_type[name][0]:", name_choice_type[name][0][name_choice_type[name][0])
-            # num_choice = name_choice_type[name][0][name_choice_type[name][0].index(record_dict[name])-3]#here we operate under the assumption that the choices are single digits
         elif(name in name_choice_type and name_choice_type[name][1] =="yesno" and record_dict[name] != ""):#special case of a multiple choice
             record_dict[name] = (lambda choice_name: '1' if choice_name == "Yes" else '0')(record_dict[name])
+
+def get_options(field):
+    """Given a field with types: radio or dropdwon, return back the options of the field
+    -field: dictonary taken fro the metadata list of dictonaries
+    """
+    regex = r",\s[\w\s/%-]+"
+    options = [option.strip(", ") for option in re.findall(regex, field['select_choices_or_calculations'])]
+    return options
+
+def get_date():
+    """
+    Returns date as a string in the forma MM-DD-YYYY
+    """
+    today = datetime.date.today()
+    date = str(today.year) +"-"+ str(today.month) + "-" + str(today.day)
+    return date
