@@ -7,16 +7,29 @@ import utils
 import copy
 
 class GUI():
+    """
+    Class responsible for creating GUI, collecting and validating user-inputted data.
+    """
+
     api = api_calls.API_calls()
-    def clear_disable_all(self, window, branch_log_dict, to_disable, caller_key = "new_exp_radio"):
+    def clear_disable_all(self, window, branch_log_dict, to_clear):
         """
-        Clears the fields and disables all the fields that depend on branching logic.
+        Methods that clears the fields and disables all the fields that depend on branching logic.
         Invoked by the radio button.
 
-        to_disable - list of rows with elements to clear
+        Parameters
+        ----------
+        window : dict
+            Dictonary maintained by PySimpleGUI to store information about the GUI window.
+        branch_log_dict : dict
+            Dictonary with the branching logic.
+        to_disable : fields to 
+
+        to_clear : list
+            List of lists with elements to clear.
         """
         #let's first clear all the fields
-        for row in to_disable:
+        for row in to_clear:
             for elem in row:
                 if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
                     window[elem.Key].update(value = "")
@@ -34,9 +47,21 @@ class GUI():
 
     def enable_selected(self, window, values, branch_log_dict, key_event):
         """
-        Enable the elements that can be used because a conditon in 
+        Method that enables the elements that can be used because a conditon in 
         branching logic is satisfied.
         Invoked when we change an option on which the branching logic depends.
+
+        Parameters
+        ----------
+        window : dict
+            Dictonary maintained by PySimpleGUI to store information about the GUI window.
+        values : dict
+            Dictonary with current values of the elements in the GUI.
+        branch_log_dict : dict
+            Dictonary with the branching logic.
+        key_event : str
+            Key of the elements that triggered call of the method.
+
         """
         utils.convert_to_numeric(values)
         # print("Here is branch_log_dict:", branch_log_dict)
@@ -52,9 +77,19 @@ class GUI():
                 
     def disable_not_selected(self, window, values, branch_log_dict, key_event):
         """
-        Disable the elements that cannot be used because of a conditon in 
-        branching logic not being satisfied.
-        Invoked when we change an option on which the branching logic depends.
+        Method that disables the elements that cannot be used because of a conditon in 
+        branching logic that is not satisfied.
+
+        Parameters
+        ----------
+        window : dict
+            Dictonary maintained by PySimpleGUI to store information about the GUI window.
+        values : dict
+            Dictonary with current values of the elements in the GUI.
+        branch_log_dict : dict
+            Dictonary with the branching logic.
+        key_event : str
+            Key of the elements that triggered call of the method.
         """
         #we need to convert values[element] into the numeric
         #could used deepcopy, but we do not actually need it
@@ -70,7 +105,7 @@ class GUI():
                 window[element_key].update(visible = False)
     def make_fields(self):
         """
-        Creates a list of lists(where each inner list is a row). Each row consists of fields
+        Method Creates a list of lists(where each inner list is a row). Each row consists of fields
         """
         #Let's first get fields in material_information printer_information
         metadata = GUI.api.get_metadata()
@@ -97,10 +132,30 @@ class GUI():
 
     def validate_fields(self, window, values):
         """
-        Validate fields according to the validation specified in REDCap.
+        Method that validates fields according to the validation specified in the REDCap project and 
+        prevents creation of new experiments with existing record_id record.
 
-        Returns True/False as the first element of a tuple to indicate if the fields passed validation
+        Returns 
+        --------
+
+        is_valid : bool
+            Boolean indicating if all fields pass the validation.
+        problem_field_name : str
+            Label of a field that failed validation. Default "".
+        record_lst : list
+            List of dictonaries corresponding to an experiment.
+        
         """
+        
+        #Check if record id is new
+        is_valid = True
+        problem_field_name = ""
+        experiment_names = GUI.api.get_experiment_names()
+        if values['record_id'] in experiment_names:
+            is_valid = False
+            problem_field_name = "Record ID"
+            return is_valid, problem_field_name 
+        
         metadata = GUI.api.get_metadata()
         enbaled_fields = filter(lambda elem: (elem['form_name']=='material_information' or elem['form_name']=='printer_information') 
         and not (isinstance(window[elem['field_name']], sg.Text) or window[elem['field_name']].Disabled), metadata)#only validate enbaled fields
@@ -111,22 +166,38 @@ class GUI():
                 #check if correct ranges
                 if field['text_validation_max'] != "":
                     if value > field['text_validation_max']:
-                        return False, field['field_label']
+                        is_valid = False 
+                        problem_field_name = field['field_label']
+                        return is_valid, problem_field_name  
                 if field['text_validation_min'] != "":
                     if value < field['text_validation_min']:
-                        return False, field['field_label']
-                    
+                        is_valid = False 
+                        problem_field_name = field['field_label']
+                        return is_valid, problem_field_name      
             elif (validation == "number" and not value.isdigit()):
                 print("number but not digit")
-                return False, field['field_label']
-        return True, None
+                is_valid = False
+                problem_field_name = field['field_label']
+                return is_valid, problem_field_name
+        return is_valid, problem_field_name
     def get_print_result(self):
+        """
+        Method that converts the user-response on the popup into a valid REDCap response.
+        """
         return "Good Print" if sg.popup_yes_no("Is it a good print?", title = "Print Quality") == "Yes" else "Bad Print"
         
     def start_GUI(self):
         """
-        Does everything related to do the UI. Returns the type of the action to do and the other required parameter. In other words, 
-        add a new trial or add a new experiment.
+        Method where the main GUI logic is implemented. 
+        
+        Returns
+        -------
+        func_name : str
+            Name of the action to perform with the data received
+        record_lst 
+        print_result : str
+            Result of the response to the "print quality" popup.
+        return "add_trial", record_lst, print_result
         
         """
         experiment_names = GUI.api.get_experiment_names()
@@ -193,7 +264,6 @@ class GUI():
                     if not field_missing:
                         #if everything is filled, then validate
                         
-                        # print("Here are printing_params in GUI_code.py:", printing_params)
                         #if user closes the popup, then the print is considered bad by default
                         is_valid, field_name = self.validate_fields(window, values)
                         if(is_valid):

@@ -11,6 +11,9 @@ import os.path
 from pathlib import Path#monitor directory presence
 
 class PrintApp():
+    """
+    Driver class.
+    """
 
     def __init__(self, loc, name_token):
         self.loc = loc
@@ -18,6 +21,9 @@ class PrintApp():
 
     
     def run(self):
+        """
+        Method called when the program starts running.
+        """
         
         print("Tracked directory: " + self.loc)
         print("Here is the name associated with a token: " + self.name_token)
@@ -33,13 +39,13 @@ class PrintApp():
 
     #this function could also be here
     def start_watching(self):
+        """
+        Method where we start watching the required directory.  
+        """
+
         observer = Observer()
-        event_handler = MyHandler(observer, self.loc)#let's also pass the path, so we can monitor the directory 
-        #(alternatively, modify the string returned by event.src_path)
+        event_handler = MyHandler(observer, self.loc)
         
-        #it is not ideal to have the path hardcoded here
-        #this could be something you would like to let users change without changint the code
-        #we can make it a parameter to the main function or a global constant imported from a config file
         observer.schedule(event_handler, path=self.loc, recursive=False)
         observer.start()
         observer.join()#we can join here bc the thread terminates. (do we need the join here?)
@@ -48,7 +54,9 @@ class PrintApp():
 
 #Trigger an event on file creation
 class MyHandler(FileSystemEventHandler):
-
+    """
+    Class with routines for monitoring file creation.    
+    """
     gui = GUI_code.GUI()
     def __init__(self, observer, path):
         self.observer = observer
@@ -56,8 +64,15 @@ class MyHandler(FileSystemEventHandler):
         
         
     def on_created(self, event):
-        #We do not want to unzip after arbitrarily predetrmined time.
-        #Check if the event.src_path direcotry still exists and while exists do not do anything
+        """
+        Method triggered in the event of file/directory creation creation. Reads from the 
+        latest created .zip file.
+
+        Paramaters
+        ----------
+        event : object
+            Object containing source path that triggered the event. 
+        """
         print("Here's src path", event.src_path)
         dir_path = Path(event.src_path)
         while True:
@@ -81,6 +96,19 @@ class MyHandler(FileSystemEventHandler):
 
 
     def populate_database(self, func_name, record_trial_info, params_converted):
+        """
+        Function that intiates the REDCap database population.
+
+        Parameters
+        ----------
+        func_name : str
+            One of the two function names corresponding to a new experiment or 
+            a new trial of an old experiment.
+        record_trial_info : dict
+            Material information + printer information dictonary.
+        params_converted : dcit
+            Parameter infromation dictonary.
+        """
         api = api_calls.API_calls()
         if func_name == "add_record":
             api.add_record(record_trial_info, params_converted)
@@ -88,6 +116,9 @@ class MyHandler(FileSystemEventHandler):
             api.add_trial(record_trial_info, params_converted)
 
     def stop(self):
+        """
+        Method used to stop the worker thread(in case we ever need to).
+        """
         self.observer.stop()
 
         

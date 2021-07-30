@@ -4,13 +4,15 @@ import utils
 import re
 
 class API_calls():
+    """
+    Class used for interacting with REDCap API through POST requests.
+    """
     URL = "https://redcap.crc.rice.edu/api/"
     token = ""
     #you could move this function to API calls
     def get_experiment_names(self):
         """
-        Exports all the records from the API and to populate the list of the experiment names, used for
-        new trials.
+        Methods that returns set of record_id's present in the REDCap project.
         """
         record_names = set()
         payload = {"token" : API_calls.token, "content":"record", "format":"json", "type":"flat"}
@@ -18,12 +20,21 @@ class API_calls():
         response = requests.post(URL, data=payload)
         for json_lit in response.json():
             record_names.add(json_lit['record_id'])
-        return list(record_names)#values["list"] does not have values if we give set as the values
+        return set(record_names)
 
     #this one too to API calls
     def get_elements(self, record_id):
         """
-        Get all JSON literals(dicts) assocciated with the record_id.
+        Method that returns all JSON literals(dicts) assocciated with the record_id.
+
+        Parameters: 
+        record_id : str
+            String corresponding to the record_id for an experiment.
+
+        Returns
+        -------
+        one_rec_lst : list
+            List containg all JSON literals(dicts) that have record_id.
         """
         #Could potentially just do one request.
         one_rec_lst = []
@@ -36,7 +47,12 @@ class API_calls():
         return one_rec_lst
     def get_branching_dep_to_indep(self):
         """
-        {dependent:{independent:set of values it can take}}
+        Method that returns a dictonary of the form {dependent field :{independent field:set of values independent can take to triger the
+        the dependent field appearance.}}
+
+        Returns
+        -------
+        bran_dict : dict with the branching logic.
         """
         bran_dict = {}
         metadata = self.get_metadata()
@@ -62,7 +78,12 @@ class API_calls():
 
     def get_branching_indep_to_dep(self):
         """
-        Get the dictonary of branching logic. {independent (which enebales):{value :dependent(enabled by independening)}}
+        Method that returns a dictonary of the form {independent field :{dependent field:set of values independent field
+        can take to triger the the dependent field appearance.}}
+
+        Returns
+        -------
+        bran_dict : dict with the branching logic.
         """
         
         bran_dict = {}
@@ -87,24 +108,44 @@ class API_calls():
                             bran_dict[field_name][value] = set([field['field_name']])
         return bran_dict
     def get_instruments(self):
+        """
+        Methods that returns the a list of instruments from the REDCap project.
+
+        Returns
+        -------
+        instruments : list
+            List containing instruments from the REDCap project.
+        """
+
         payload = {"token" : API_calls.token, "format":"json", "type":"flat", "content":"instrument"}
         instruments = requests.post(API_calls.URL, data=payload).json()
         return instruments
 
     def get_metadata(self):
         """
-        Returns the dictonary with metadata
+        Method that returns the dictonary with metadata.
+
+        Returns
+        -------
+        metadata : dict
+            Dictonary containing metadata.
+
         """
         payload = {"token" : API_calls.token, "content":"metadata", "format":"json", "type":"flat"} 
         response = requests.post(API_calls.URL, data=payload)
-        return response.json()
+        metadata = response.json()
+        return metadata
 
     def add_record(self, user_input, printing_params):
         """
-        This function is for cretaion of a new records only (i.e. not a new trial).
+        Method that adds a record about a new experiment to the REDCap Project. 
         
-        user_input - dictonary with the info user inputs through a form (i.e material info)
-        printing_params - printing_parameters extracted from theinput file
+        Parameters
+        ----------
+        user_input : dict
+            Dictonary with the info user inputted through the GUI form (i.e material info).
+        printing_params : dict
+            Dictonary with printing_parameters extracted from the XML file.
         """
         #Let's get all the fields by running metadata
         metadata = self.get_metadata()
@@ -160,12 +201,14 @@ class API_calls():
 
     def add_trial(self, record_dict, printing_params):
         """
-        This function adds a trial to an already existing experiment. In this case, user should have 
-        inputed a valid record_id
+        Method that adds a new trial to an existing experiment to the REDCap Project. 
         
-        user_input - list of dictonaries associated with the
-        record_id
-        priniting_params - new printing params from the export file for the new trial
+        Parameters
+        ----------
+        record : dict
+            Dictonary with the info user inputted through the GUI form when performing the first trial of the experiment.
+        printing_params : dict
+            Dictonary with printing_parameters extracted from the XML file.
         """
         payload = {"token" : API_calls.token, "content":"record", "format":"json", "type":"flat"}
         #We need to locate the record with the required record id

@@ -18,14 +18,6 @@ def main(location, name_token):
     app = PrintApp(location, name_token)
     app.run()
 
-
-
-"""
-this gets executed when you run the python file from CMD
-good practice is to parse any CMD arguments here 
-and run the main function from here
-"""
-
 if __name__ == "__main__" :
 
     #nice way to parse arguments
