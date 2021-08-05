@@ -31,7 +31,7 @@ class GUI():
         #let's first clear all the fields
         for row in to_clear:
             for elem in row:
-                if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
+                if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text) and not isinstance(elem, sg.Listbox)):#do not block the radio button):
                     window[elem.Key].update(value = "")
 
         #let's now disable the branching logic
@@ -97,7 +97,7 @@ class GUI():
         key_set = set(branch_log_dict[key_event].keys())
         for key in key_set.difference(set([values[key_event]])):
             for element_key in branch_log_dict[key_event][key]:
-                if not isinstance(window[element_key], sg.Text):
+                if not isinstance(window[element_key], sg.Text) and not isinstance(window[element_key], sg.Listbox):
                     window[element_key].update(disabled = True)
                     window[element_key].update(value = "")
                     window[element_key].metadata = False
@@ -186,6 +186,35 @@ class GUI():
         """
         return "Good Print" if sg.popup_yes_no("Is it a good print?", title = "Print Quality") == "Yes" else "Bad Print"
         
+    def getPicturesPrintEval(self):
+
+        col_print_quality = [[sg.Radio('Good Print', "Print Quality", default=True, enable_events = True, key="good_radio", metadata='not_disable')],
+        [sg.Radio('Bad Print', "Print Quality", default=False, enable_events = True, key="bad_radio", metadata='not_disable')],
+        [sg.Text("Please input your comments (if any): "),sg.Multiline()],
+        [sg.Button(button_text= "OK", enable_events= True, key ="OK")]]
+
+        col_images =  [[sg.Text("Folder with Images Location:")], 
+        [sg.Input(key = "FolderName"), sg.FolderBrowse(button_text = "Browse")]]
+        layout =  [[sg.Column(col_print_quality), sg.Column(col_images)]]
+       
+        
+
+        window = sg.Window('Print Assesment', layout, keep_on_top=True)#Creation of the window
+        while True:
+            event, values = window.read()
+            # End program if user closes window or
+            # presses the OK button
+            # you can use switch-case here instead of if statements
+            if event == sg.WIN_CLOSED:
+                #Indicate abort
+                window.close()
+                return ("Good Print", None) if values["good_radio"] else ("Bad Print", None)
+            elif event == "OK":
+                fileName = values["FolderName"]
+                window.close()
+                return ("Good Print", fileName) if values["good_radio"] else ("Bad Print", fileName)
+
+            
     def start_GUI(self):
         """
         Method where the main GUI logic is implemented. 
@@ -200,13 +229,16 @@ class GUI():
         return "add_trial", record_lst, print_result
         
         """
-        experiment_names = GUI.api.get_experiment_names()
+        experiment_names = list(GUI.api.get_experiment_names())
+        #selected_exp = None #value picked in the list
+
         branch_log_dict = GUI.api.get_branching_indep_to_dep()
         #Separate columns for a new trial and a new experiment
 
         col_new_trial = [[sg.Radio('New Trial', "RADIO1", default=True, enable_events = True, key="new_trial_radio", metadata='not_disable')],
         [sg.Text(text = "Please pick your experiment from the list below:")], 
-        [sg.Listbox(values=experiment_names, size=(30, 6), key="list", select_mode = sg.LISTBOX_SELECT_MODE_SINGLE)]]
+        [sg.Listbox(values=experiment_names, size=(30, 6), key="list", select_mode = sg.LISTBOX_SELECT_MODE_SINGLE, enable_events= True)]]
+        
 
         #metadata ahs true if we need to input filed
         col_new_experiment = [[sg.Radio('New experiment', "RADIO1", enable_events=True, key="new_exp_radio", metadata='not_disable')]]
@@ -220,19 +252,23 @@ class GUI():
             # End program if user closes window or
             # presses the OK button
             # you can use switch-case here instead of if statements
+            #print("Here is list values:", values["list"])
             if event == sg.WIN_CLOSED:
-                #LIndicate abort
+                #Indicate abort
                 return None, None, None
             elif event == "new_exp_radio":#if new experiment is picked, then disable the elements for the new trial
                 #for evey field on which branching logic depends on, disable everything not selected
+                #print("Here us values['list'] before disabling list:", values['list'])
                 window['list'].update(disabled = True)
                 for row in col_new_experiment:
                     for elem in row:
                         if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
                             window[elem.Key].update(disabled = False)
                 # print("I am here (new_exp_radio)")
+                
                 self.clear_disable_all(window, branch_log_dict, col_new_experiment)#we could just enable a few, instead
-            elif event == "new_trial_radio":#if new trial is picked, diable the element fir the new experiment, enable for the new trua
+                #print("Here us values['lost'] after disable all:", values['list'])
+            elif event == "new_trial_radio":#if new trial is picked, disable the elements for the new experiment, enable for the new trua
                 #disable everything in the form
                 for row in col_new_experiment:
                     for elem in row:
@@ -267,7 +303,7 @@ class GUI():
                         #if user closes the popup, then the print is considered bad by default
                         is_valid, field_name = self.validate_fields(window, values)
                         if(is_valid):
-                            print_result = self.get_print_result()
+                            print_result, fileName = self.getPicturesPrintEval()
                             window.close()
                             #now, we also return print_result
                             return "add_record", printing_params, print_result
@@ -275,17 +311,24 @@ class GUI():
                             sg.popup_ok("The field could not be validated: " + field_name)
                                                         
                 elif values['new_trial_radio']:#could use else
-                    # print("here are values of list_box", values['list'])
+                    #print("Here is selected_exp:", selected_exp)
+                    print("here are values of list_box", values['list'])
                     # print("here are values:", values)
                     if values['list'] == []:
                         sg.popup_ok('Required fields are missing!')
                         continue#go to while loop
                     #we got here, so we now know the record_id of the experiment we want to do the new trial for
-                    record_lst = GUI.api.get_elements(record_id=values['list'][0])
-                    print_result = self.get_print_result()
+                    #print("Here is values:", values)
+                    record_lst = values['list'][0]
+                    #create a new window with print quality + pictures
+                    print_result, fileName = self.getPicturesPrintEval()
                     window.close()
                     return "add_trial", record_lst, print_result
             elif event in branch_log_dict:#if branching logic is dependent on this element
                 #we could only enable/disable stuff affected by the element
                 self.enable_selected(window, copy.deepcopy(values), branch_log_dict, event)
                 self.disable_not_selected(window, copy.deepcopy(values), branch_log_dict, event)
+
+            # elif event == 'list':
+            #     print("Here is list of values:", values['list'])
+            #     #selected_exp = values['list'][0]

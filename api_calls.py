@@ -20,7 +20,7 @@ class API_calls():
         response = requests.post(URL, data=payload)
         for json_lit in response.json():
             record_names.add(json_lit['record_id'])
-        return set(record_names)
+        return record_names
 
     #this one too to API calls
     def get_elements(self, record_id):
