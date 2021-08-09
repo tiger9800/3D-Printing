@@ -143,7 +143,7 @@ class API_calls():
         
         # Init the project with the api url and your specific api key
         
-        project = redcap.Project(API_calls.URL, "17F8E57B086D599FF5A768F6612E5607")
+        project = redcap.Project(API_calls.URL, API_calls.token)
         
         for num_img in range(1, num_images + 1):
             fname = images[num_img-1]
