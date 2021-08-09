@@ -64,8 +64,6 @@ class GUI():
 
         """
         utils.convert_to_numeric(values)
-        # print("Here is branch_log_dict:", branch_log_dict)
-        # print("Here is values:", values)
         if(values[key_event] in branch_log_dict[key_event]):#if there is branching for the chosen option
             for element_key in branch_log_dict[key_event][values[key_event]]:
                 #values the element can take
@@ -175,7 +173,6 @@ class GUI():
                         problem_field_name = field['field_label']
                         return is_valid, problem_field_name      
             elif (validation == "number" and not value.isdigit()):
-                print("number but not digit")
                 is_valid = False
                 problem_field_name = field['field_label']
                 return is_valid, problem_field_name
@@ -252,22 +249,18 @@ class GUI():
             # End program if user closes window or
             # presses the OK button
             # you can use switch-case here instead of if statements
-            #print("Here is list values:", values["list"])
             if event == sg.WIN_CLOSED:
                 #Indicate abort
                 return None, None, None
             elif event == "new_exp_radio":#if new experiment is picked, then disable the elements for the new trial
                 #for evey field on which branching logic depends on, disable everything not selected
-                #print("Here us values['list'] before disabling list:", values['list'])
                 window['list'].update(disabled = True)
                 for row in col_new_experiment:
                     for elem in row:
                         if(elem.metadata != 'not_disable' and not isinstance(elem, sg.Text)):#do not block the radio button):
                             window[elem.Key].update(disabled = False)
-                # print("I am here (new_exp_radio)")
                 
                 self.clear_disable_all(window, branch_log_dict, col_new_experiment)#we could just enable a few, instead
-                #print("Here us values['lost'] after disable all:", values['list'])
             elif event == "new_trial_radio":#if new trial is picked, disable the elements for the new experiment, enable for the new trua
                 #disable everything in the form
                 for row in col_new_experiment:
@@ -303,32 +296,24 @@ class GUI():
                         #if user closes the popup, then the print is considered bad by default
                         is_valid, field_name = self.validate_fields(window, values)
                         if(is_valid):
-                            print_result, fileName = self.getPicturesPrintEval()
+                            print_result, folderPath = self.getPicturesPrintEval()
                             window.close()
                             #now, we also return print_result
-                            return "add_record", printing_params, print_result
+                            return "add_record", printing_params, print_result, folderPath
                         else:
                             sg.popup_ok("The field could not be validated: " + field_name)
                                                         
                 elif values['new_trial_radio']:#could use else
-                    #print("Here is selected_exp:", selected_exp)
-                    print("here are values of list_box", values['list'])
-                    # print("here are values:", values)
                     if values['list'] == []:
                         sg.popup_ok('Required fields are missing!')
                         continue#go to while loop
                     #we got here, so we now know the record_id of the experiment we want to do the new trial for
-                    #print("Here is values:", values)
-                    record_lst = values['list'][0]
+                    record_lst = GUI.api.get_elements(values['list'][0])
                     #create a new window with print quality + pictures
-                    print_result, fileName = self.getPicturesPrintEval()
+                    print_result, folderPath = self.getPicturesPrintEval()
                     window.close()
-                    return "add_trial", record_lst, print_result
+                    return "add_trial", record_lst, print_result, folderPath
             elif event in branch_log_dict:#if branching logic is dependent on this element
                 #we could only enable/disable stuff affected by the element
                 self.enable_selected(window, copy.deepcopy(values), branch_log_dict, event)
                 self.disable_not_selected(window, copy.deepcopy(values), branch_log_dict, event)
-
-            # elif event == 'list':
-            #     print("Here is list of values:", values['list'])
-            #     #selected_exp = values['list'][0]

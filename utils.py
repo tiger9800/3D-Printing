@@ -5,7 +5,7 @@ from zipfile import ZipFile
 import re
 import datetime
 import json
-
+import os
 
 def dir_path(string):
     '''
@@ -175,4 +175,30 @@ def get_token(name_token):
         except KeyError:
             print("The token for this user does not exist. Please Try again")
         name_token = input()
-        
+
+def getAllImages(folderPath):
+    """
+    Get all .png files in the folder located at folderPath.
+
+    Parameters
+    ----------
+    folderPath : str
+        Path of the folder where the images are located.
+    """
+    image_list = []
+    for file in os.listdir(folderPath):
+        if file.endswith(".png"):
+            image_list.append(os.path.join(folderPath, file))
+    #make sure images are in the correct order 
+    image_list.sort(key = lambda s: int(s[s.find("layer") + 5:s.find("layer") + 6]))
+    return image_list
+
+def getNumLayers(field_names, images):
+    """
+    Return number of layers.
+    
+    """
+    layerNums = list(map(lambda elem: int(elem[elem.index("layer_") + 6:]) ,filter(lambda elem: elem.find("im_layer") != -1 , field_names)))
+
+
+    return min(len(images), max(layerNums))

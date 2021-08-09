@@ -2,6 +2,7 @@ import requests
 import json
 import utils
 import re
+import redcap
 
 class API_calls():
     """
@@ -136,7 +137,21 @@ class API_calls():
         metadata = response.json()
         return metadata
 
-    def add_record(self, user_input, printing_params):
+        
+
+    def importImages(self, record_id, repeat_instance, num_images, images):
+        
+        # Init the project with the api url and your specific api key
+        
+        project = redcap.Project(API_calls.URL, "17F8E57B086D599FF5A768F6612E5607")
+        
+        for num_img in range(1, num_images + 1):
+            fname = images[num_img-1]
+            with open(fname, 'rb') as fobj:
+                project.import_file(record=record_id, field = 'im_layer_'+str(num_img), fname = fname, fobj = fobj, repeat_instance=repeat_instance)
+        
+
+    def add_record(self, user_input, printing_params, folderPath):
         """
         Method that adds a record about a new experiment to the REDCap Project. 
         
@@ -168,7 +183,7 @@ class API_calls():
             del record_print_mat['paxton']#cause an error when Gels are selected alternatively we could delete
         #the field from the survey
 
-        #Now we have completed the first two forms (should we updat _complete, or does user put it?)
+        #Now we have completed the first two forms
         #Let's complete the third form(pritning parameters) form for the first trial
         record_print_params  = {field['field_name']: '' for field in metadata}#intialize the JSON literal
         #Let's add the instruments_complete'
@@ -187,6 +202,13 @@ class API_calls():
             record_print_params[key] = printing_params[key]
         utils.convert_to_numeric(record_print_params)
         utils.check_bran_logic(record_print_params)
+
+        #get number of images/layers
+
+        images = utils.getAllImages(folderPath)
+        num_layers = utils.getNumLayers(record_print_params.keys(), images)
+
+        record_print_params['num_layers'] = num_layers
         #Now, we just need to post the request
         payload['content'] = 'record'
         json_record = json.dumps([record_print_mat, record_print_params])
@@ -197,9 +219,12 @@ class API_calls():
         if('error' in msg.json()):
             print(msg.json())
             print(msg.json()['erorr'])
+
+        #add images
+        self.importImages(record_print_params['record_id'], 1, num_layers, images)
     
 
-    def add_trial(self, record_dict, printing_params):
+    def add_trial(self, record_dict, printing_params, folderPath):
         """
         Method that adds a new trial to an existing experiment to the REDCap Project. 
         
@@ -241,6 +266,13 @@ class API_calls():
         #make the form complete
         utils.check_bran_logic(record_print_params)
         utils.convert_to_numeric(record_print_params)
+
+        images = utils.getAllImages(folderPath)
+        num_layers = utils.getNumLayers(record_print_params.keys(), images)
+
+        print(num_layers)
+        record_print_params['num_layers'] = num_layers
+
         #POST REQUEST
         json_record = json.dumps([record_print_params])
         payload['data'] = json_record
@@ -249,3 +281,6 @@ class API_calls():
         if('error' in msg.json()):
             print(msg.json())
             print(msg.json()['erorr'])
+
+        #add images
+        self.importImages(record_print_params['record_id'], rep_instance, num_layers, images)

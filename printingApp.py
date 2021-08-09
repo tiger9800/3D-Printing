@@ -87,15 +87,15 @@ class MyHandler(FileSystemEventHandler):
         params_converted = get_final_params(lines)
 
         #Now, we need to start the GUI code
-        func_name, record_trial_info, print_result = MyHandler.gui.start_GUI()
+        func_name, record_trial_info, print_result, folderPath = MyHandler.gui.start_GUI()
 
         #update the print_result obtained from GUI
         params_converted['print_eval'] = print_result
         #Populate DB
-        self.populate_database(func_name, record_trial_info, params_converted)
+        self.populate_database(func_name, record_trial_info, params_converted, folderPath)
 
 
-    def populate_database(self, func_name, record_trial_info, params_converted):
+    def populate_database(self, func_name, record_trial_info, params_converted, folderPath):
         """
         Function that intiates the REDCap database population.
 
@@ -111,9 +111,9 @@ class MyHandler(FileSystemEventHandler):
         """
         api = api_calls.API_calls()
         if func_name == "add_record":
-            api.add_record(record_trial_info, params_converted)
+            api.add_record(record_trial_info, params_converted, folderPath)
         if func_name == "add_trial":
-            api.add_trial(record_trial_info, params_converted)
+            api.add_trial(record_trial_info, params_converted, folderPath)
 
     def stop(self):
         """
