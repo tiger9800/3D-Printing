@@ -2,4 +2,5 @@
 
 PySimpleGUI
 watchdog
-redcap
+requests
+PyCap
