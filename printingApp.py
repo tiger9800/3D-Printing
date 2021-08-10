@@ -9,6 +9,7 @@ from utils import *
 import glob
 import os.path
 from pathlib import Path#monitor directory presence
+import time
 
 class PrintApp():
     """
@@ -74,15 +75,21 @@ class MyHandler(FileSystemEventHandler):
             Object containing source path that triggered the event. 
         """
         print("Here's src path", event.src_path)
+        if not event.src_path.endswith(".zip"):
+            print("Not .zip")
+            return None
         dir_path = Path(event.src_path)
-        while True:
-            if not dir_path.exists():#the directory does not exist
-                break
+        # while True:
+        #     print("Dir does not exist -- loop")
+        #     if not dir_path.exists():#the directory does not exist
+        #         print("Dir does not exist")
+        #         break
         folder_path = self.path
         file_type = '\*zip'#look for the last .zip file
         files = glob.glob(folder_path + file_type)
         max_file = max(files, key=os.path.getctime)
         print ("Here is the last file", max_file) 
+        time.sleep(2)
         lines = unzip_read(max_file)
         params_converted = get_final_params(lines)
 
@@ -93,7 +100,6 @@ class MyHandler(FileSystemEventHandler):
         params_converted['print_eval'] = print_result
         #Populate DB
         self.populate_database(func_name, record_trial_info, params_converted, folderPath)
-
 
     def populate_database(self, func_name, record_trial_info, params_converted, folderPath):
         """
