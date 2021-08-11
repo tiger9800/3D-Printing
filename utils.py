@@ -15,6 +15,10 @@ def dir_path(string):
     ----------
     string : str
         String correpsonding to the path.
+
+    Returns
+    -------
+    None.
     '''
     if os.path.isdir(string):
         return string
@@ -74,10 +78,14 @@ def check_bran_logic(record_dict):
     Function that delete the fields that are not supposed to be included in the record_dict because their branching logic
     is not satisfied. (Modfies record_dict by reference)
 
-    Paramaters
+    Parameters
     ----------
     record_dict : dict
-        Dictonary with field_name's as keys and field_values as values. 
+        Dictonary with field_name's as keys and field_values as values.
+
+    Returns
+    -------
+    None.
     """
     api = api_calls.API_calls()
     branch_dict = api.get_branching_dep_to_indep()
@@ -106,11 +114,14 @@ def convert_to_numeric(record_dict):
     """
     Function converts string choices in to numeric choices according to the REDCAP project specifications.
 
-    Paramaters
+    Parameters
     ----------
     record_dict : dict
         Dictonary with field_name's as keys and field_values as values.(modified by reference)
     
+    Returns
+    -------
+    None.
     """
     api = api_calls.API_calls()
     metadata = api.get_metadata()
@@ -139,6 +150,10 @@ def get_options(field):
     ----------
     field : dict
         Dictonary taken from the metadata list of dictonaries.
+
+    Returns
+    -------
+    None.
     """
     regex = r",\s[\w\s/%-]+"
     options = [option.strip(", ") for option in re.findall(regex, field['select_choices_or_calculations'])]
@@ -147,6 +162,14 @@ def get_options(field):
 def get_date():
     """
     Function today's date in the correct format.
+
+    Parameters
+    ----------
+    None.
+
+    Returns
+    -------
+    None.
     """
     today = datetime.date.today()
     date = str(today.year) +"-"+ str(today.month) + "-" + str(today.day)
@@ -184,6 +207,11 @@ def getAllImages(folderPath):
     ----------
     folderPath : str
         Path of the folder where the images are located.
+
+    Returns
+    -------
+    image_list : list
+        A list of paths to the images.
     """
     image_list = []
     for file in os.listdir(folderPath):
@@ -197,8 +225,20 @@ def getNumLayers(field_names, images):
     """
     Return number of layers.
     
+    Parameters
+    ----------
+    field_names :  List-like iterbale
+        An iterable that holds the names of the input fields.
+    images : list
+        A list of paths to the images.
+    
+    Returns
+    -------
+    min_layers : int
+        Minimum number of layers that can be added to the experiment record.
     """
     layerNums = list(map(lambda elem: int(elem[elem.index("layer_") + 6:]) ,filter(lambda elem: elem.find("im_layer") != -1 , field_names)))
 
+    min_layers = min(len(images), max(layerNums))
 
-    return min(len(images), max(layerNums))
+    return min_layers

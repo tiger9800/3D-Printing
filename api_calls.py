@@ -4,7 +4,7 @@ import utils
 import re
 import redcap
 
-class API_calls():
+class API_calls:
     """
     Class used for interacting with REDCap API through POST requests.
     """
@@ -14,6 +14,15 @@ class API_calls():
     def get_experiment_names(self):
         """
         Methods that returns set of record_id's present in the REDCap project.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        record_names : set
+            A set of record_id's/experiments. 
         """
         record_names = set()
         payload = {"token" : API_calls.token, "content":"record", "format":"json", "type":"flat"}
@@ -28,7 +37,8 @@ class API_calls():
         """
         Method that returns all JSON literals(dicts) assocciated with the record_id.
 
-        Parameters: 
+        Parameters
+        ---------- 
         record_id : str
             String corresponding to the record_id for an experiment.
 
@@ -49,11 +59,16 @@ class API_calls():
     def get_branching_dep_to_indep(self):
         """
         Method that returns a dictonary of the form {dependent field :{independent field:set of values independent can take to triger the
-        the dependent field appearance.}}
+        the dependent field appearance.
+
+        Parameters
+        ----------
+        None.
 
         Returns
         -------
-        bran_dict : dict with the branching logic.
+        bran_dict : dict 
+            Dictonary with the branching logic.
         """
         bran_dict = {}
         metadata = self.get_metadata()
@@ -82,9 +97,13 @@ class API_calls():
         Method that returns a dictonary of the form {independent field :{dependent field:set of values independent field
         can take to triger the the dependent field appearance.}}
 
+        Parameters
+        ----------
+        None.
+
         Returns
         -------
-        bran_dict : dict with the branching logic.
+            bran_dict : dict with the branching logic.
         """
         
         bran_dict = {}
@@ -112,6 +131,10 @@ class API_calls():
         """
         Methods that returns the a list of instruments from the REDCap project.
 
+        Parameters
+        ----------
+        None.
+
         Returns
         -------
         instruments : list
@@ -125,6 +148,10 @@ class API_calls():
     def get_metadata(self):
         """
         Method that returns the dictonary with metadata.
+
+        Parameters
+        ----------
+        None.
 
         Returns
         -------
@@ -141,7 +168,24 @@ class API_calls():
 
     def importImages(self, record_id, repeat_instance, num_images, images):
         
-        # Init the project with the api url and your specific api key
+        """ 
+        Method that imports all images into the REDCap project for the specified record_id.
+
+        Parameters
+        ----------
+        record_id : str
+            The record_id associated with the print for which images were taken.
+        repeat_instance : str
+            The trial for which images were taken.
+        num_images : int
+            The number of images/layers.
+        images : list
+            List of the paths of the images.
+
+        Returns
+        -------
+        None.
+        """
         
         project = redcap.Project(API_calls.URL, API_calls.token)
         
@@ -161,6 +205,10 @@ class API_calls():
             Dictonary with the info user inputted through the GUI form (i.e material info).
         printing_params : dict
             Dictonary with printing_parameters extracted from the XML file.
+
+        Returns
+        -------
+        None.
         """
         #Let's get all the fields by running metadata
         metadata = self.get_metadata()
@@ -206,9 +254,9 @@ class API_calls():
         #get number of images/layers
 
         images = utils.getAllImages(folderPath)
-        num_layers = utils.getNumLayers(record_print_params.keys(), images)
-
-        record_print_params['num_layers'] = num_layers
+        if len(images) != 0:
+            num_layers = utils.getNumLayers(record_print_params.keys(), images)
+            record_print_params['num_layers'] = num_layers
         #Now, we just need to post the request
         payload['content'] = 'record'
         json_record = json.dumps([record_print_mat, record_print_params])
@@ -221,7 +269,8 @@ class API_calls():
             print(msg.json()['erorr'])
 
         #add images
-        self.importImages(record_print_params['record_id'], 1, num_layers, images)
+        if len(images) != 0:
+            self.importImages(record_print_params['record_id'], 1, num_layers, images)
     
 
     def add_trial(self, record_dict, printing_params, folderPath):
@@ -234,6 +283,10 @@ class API_calls():
             Dictonary with the info user inputted through the GUI form when performing the first trial of the experiment.
         printing_params : dict
             Dictonary with printing_parameters extracted from the XML file.
+        
+        Returns
+        -------
+        None.
         """
         payload = {"token" : API_calls.token, "content":"record", "format":"json", "type":"flat"}
         #We need to locate the record with the required record id
@@ -251,7 +304,7 @@ class API_calls():
 
         #the rep instance
         record_print_params['redcap_repeat_instance'] = rep_instance
-        #Finally, let's add the paramters of the new trial(parsed from export)
+        #Finally, let's add the params of the new trial(parsed from export)
         record_print_params['date_exp']= utils.get_date()
         for key in printing_params:
             record_print_params[key] = printing_params[key]
@@ -268,10 +321,9 @@ class API_calls():
         utils.convert_to_numeric(record_print_params)
 
         images = utils.getAllImages(folderPath)
-        num_layers = utils.getNumLayers(record_print_params.keys(), images)
-
-        print(num_layers)
-        record_print_params['num_layers'] = num_layers
+        if len(images) != 0:
+            num_layers = utils.getNumLayers(record_print_params.keys(), images)
+            record_print_params['num_layers'] = num_layers
 
         #POST REQUEST
         json_record = json.dumps([record_print_params])
@@ -283,4 +335,5 @@ class API_calls():
             print(msg.json()['erorr'])
 
         #add images
-        self.importImages(record_print_params['record_id'], rep_instance, num_layers, images)
+        if len(images) != 0:
+            self.importImages(record_print_params['record_id'], rep_instance, num_layers, images)

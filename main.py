@@ -1,5 +1,3 @@
-
-
 from printingApp import PrintApp
 #nice library for parsing cmd line arguments
 import argparse

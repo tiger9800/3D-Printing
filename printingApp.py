@@ -11,12 +11,27 @@ import os.path
 from pathlib import Path#monitor directory presence
 import time
 
-class PrintApp():
+class PrintApp:
     """
     Driver class.
     """
 
     def __init__(self, loc, name_token):
+        """
+        Initialise PrintingApp class.
+
+        Parameters
+        ----------
+        loc : str
+            Path to the folder to monitor for creation of new .zip files.
+        name_token : str
+            Name associated with a REDCap API token to be used.
+
+        Returns
+        -------
+        None.
+        """
+
         self.loc = loc
         self.name_token = name_token
 
@@ -24,6 +39,14 @@ class PrintApp():
     def run(self):
         """
         Method called when the program starts running.
+        
+        Parameters
+        ----------
+        None.
+        
+        Returns
+        -------
+        None.
         """
         
         print("Tracked directory: " + self.loc)
@@ -42,6 +65,14 @@ class PrintApp():
     def start_watching(self):
         """
         Method where we start watching the required directory.  
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.
         """
 
         observer = Observer()
@@ -60,30 +91,41 @@ class MyHandler(FileSystemEventHandler):
     """
     gui = GUI_code.GUI()
     def __init__(self, observer, path):
+        """
+        Initialise MyHandler class.
+
+        Parameters
+        ----------
+        observer : Observer object
+            Instance of the Observer class used to observe the path.
+        path : str
+            Path to the folder to monitor for creation of new .zip files.
+        
+        Returns
+        -------
+        None.
+        """
         self.observer = observer
         self.path = path
-        
         
     def on_created(self, event):
         """
         Method triggered in the event of file/directory creation creation. Reads from the 
         latest created .zip file.
 
-        Paramaters
+        Parameters
         ----------
         event : object
-            Object containing source path that triggered the event. 
+            Object containing source path that triggered the event.
+        
+        Returns
+        -------
+        None.
         """
         print("Here's src path", event.src_path)
         if not event.src_path.endswith(".zip"):
             print("Not .zip")
             return None
-        dir_path = Path(event.src_path)
-        # while True:
-        #     print("Dir does not exist -- loop")
-        #     if not dir_path.exists():#the directory does not exist
-        #         print("Dir does not exist")
-        #         break
         folder_path = self.path
         file_type = '\*zip'#look for the last .zip file
         files = glob.glob(folder_path + file_type)
@@ -113,7 +155,11 @@ class MyHandler(FileSystemEventHandler):
         record_trial_info : dict
             Material information + printer information dictonary.
         params_converted : dcit
-            Parameter infromation dictonary.
+            Parameter information dictonary.
+
+        Returns
+        -------
+        None.
         """
         api = api_calls.API_calls()
         if func_name == "add_record":
@@ -124,8 +170,13 @@ class MyHandler(FileSystemEventHandler):
     def stop(self):
         """
         Method used to stop the worker thread(in case we ever need to).
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.
         """
         self.observer.stop()
-
-        
-        

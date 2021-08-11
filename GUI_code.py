@@ -6,7 +6,7 @@ import api_calls
 import utils
 import copy
 
-class GUI():
+class GUI:
     """
     Class responsible for creating GUI, collecting and validating user-inputted data.
     """
@@ -27,6 +27,10 @@ class GUI():
 
         to_clear : list
             List of lists with elements to clear.
+        
+        Returns
+        -------
+        None.
         """
         #let's first clear all the fields
         for row in to_clear:
@@ -62,6 +66,9 @@ class GUI():
         key_event : str
             Key of the elements that triggered call of the method.
 
+        Returns
+        -------
+        None.
         """
         utils.convert_to_numeric(values)
         if(values[key_event] in branch_log_dict[key_event]):#if there is branching for the chosen option
@@ -88,6 +95,10 @@ class GUI():
             Dictonary with the branching logic.
         key_event : str
             Key of the elements that triggered call of the method.
+
+        Returns
+        -------
+        None.
         """
         #we need to convert values[element] into the numeric
         #could used deepcopy, but we do not actually need it
@@ -103,7 +114,16 @@ class GUI():
                 window[element_key].update(visible = False)
     def make_fields(self):
         """
-        Method Creates a list of lists(where each inner list is a row). Each row consists of fields
+        Method that returns a list of lists(where each inner list is a row). Each row consists of inpuy fields.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.
+
         """
         #Let's first get fields in material_information printer_information
         metadata = GUI.api.get_metadata()
@@ -133,9 +153,15 @@ class GUI():
         Method that validates fields according to the validation specified in the REDCap project and 
         prevents creation of new experiments with existing record_id record.
 
+        Parameters
+        ----------
+        window : dict
+            Dictonary with elements in the GUI as keys and their states as values.
+        values : dict
+            Dictonary with elements in the GUI as keys and their corresponding values.
+        
         Returns 
         --------
-
         is_valid : bool
             Boolean indicating if all fields pass the validation.
         problem_field_name : str
@@ -180,11 +206,32 @@ class GUI():
     def get_print_result(self):
         """
         Method that converts the user-response on the popup into a valid REDCap response.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        None.     
         """
         return "Good Print" if sg.popup_yes_no("Is it a good print?", title = "Print Quality") == "Yes" else "Bad Print"
         
     def getPicturesPrintEval(self):
+        """
+        Method responsible for collecting print evaluation input and folder with layer images.
 
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        print_quality : bool
+            Boolean indicating the quality of the print (good/bad).
+        fileName : str
+            Path to the folder with images of layers.      
+        """
         col_print_quality = [[sg.Radio('Good Print', "Print Quality", default=True, enable_events = True, key="good_radio", metadata='not_disable')],
         [sg.Radio('Bad Print', "Print Quality", default=False, enable_events = True, key="bad_radio", metadata='not_disable')],
         [sg.Text("Please input your comments (if any): "),sg.Multiline()],
@@ -216,15 +263,18 @@ class GUI():
         """
         Method where the main GUI logic is implemented. 
         
+        Parameters
+        ----------
+        None.
+
         Returns
         -------
         func_name : str
             Name of the action to perform with the data received
-        record_lst 
+        record_lst : dict
+            Dictonaey with material info inputted by the user.
         print_result : str
             Result of the response to the "print quality" popup.
-        return "add_trial", record_lst, print_result
-        
         """
         experiment_names = list(GUI.api.get_experiment_names())
         #selected_exp = None #value picked in the list
@@ -251,7 +301,7 @@ class GUI():
             # you can use switch-case here instead of if statements
             if event == sg.WIN_CLOSED:
                 #Indicate abort
-                return None, None, None
+                return None, None, None, None
             elif event == "new_exp_radio":#if new experiment is picked, then disable the elements for the new trial
                 #for evey field on which branching logic depends on, disable everything not selected
                 window['list'].update(disabled = True)
@@ -287,7 +337,7 @@ class GUI():
                                     sg.popup_ok('Required fields are missing!')#if at least one field is empty, throw a popup and stop checking
                                     break  # Shows OK button
                                     #if at least one field does not have a value, then we generate a popup
-                                elif(values[elem.Key] != ""):#add to the dictonary of paramaters
+                                elif(values[elem.Key] != ""):#add to the dictonary of params
                                     printing_params[elem.Key] = values[elem.Key]
                        
                     if not field_missing:
